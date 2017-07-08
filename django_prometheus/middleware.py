@@ -35,8 +35,8 @@ class PrometheusBeforeMiddleware(MiddlewareMixin):
 
 
 requests_latency = Histogram(
-    'django_http_requests_latency_seconds', ['endpoint'],
-    'Histogram of requests processing time.')   
+    'django_http_requests_latency_seconds',
+    'Histogram of requests processing time.', ['endpoint'])   
 requests_unknown_latency = Counter(
     'django_http_requests_unknown_latency_total',
     'Count of requests for which the latency was unknown.')
