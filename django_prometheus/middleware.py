@@ -35,8 +35,8 @@ class PrometheusBeforeMiddleware(MiddlewareMixin):
 
 
 requests_latency = Histogram(
-    'django_http_requests_latency_seconds',
-    'Histogram of requests processing time.')
+    'django_http_requests_latency_seconds', ['endpoint'],
+    'Histogram of requests processing time.')   
 requests_unknown_latency = Counter(
     'django_http_requests_unknown_latency_total',
     'Count of requests for which the latency was unknown.')
@@ -47,7 +47,7 @@ ajax_requests = Counter(
 requests_by_method = Counter(
     'django_http_requests_total_by_method',
     'Count of requests by method.',
-    ['method'])
+    ['method', 'endpoint'])
 requests_by_transport = Counter(
     'django_http_requests_total_by_transport',
     'Count of requests by transport.',
@@ -70,7 +70,7 @@ responses_by_templatename = Counter(
 responses_by_status = Counter(
     'django_http_responses_total_by_status',
     'Count of responses by status.',
-    ['status'])
+    ['status', 'endpoint'])
 responses_body_bytes = Histogram(
     'django_http_responses_body_total_bytes',
     'Histogram of responses by body size.',
@@ -108,7 +108,7 @@ class PrometheusAfterMiddleware(MiddlewareMixin):
     def process_request(self, request):
         transport = self._transport(request)
         method = self._method(request)
-        requests_by_method.labels(method).inc()
+        requests_by_method.labels(method=method, endpoint=request.path).inc()
         requests_by_transport.labels(transport).inc()
         if request.is_ajax():
             ajax_requests.inc()
@@ -129,7 +129,7 @@ class PrometheusAfterMiddleware(MiddlewareMixin):
         return response
 
     def process_response(self, request, response):
-        responses_by_status.labels(str(response.status_code)).inc()
+        responses_by_status.labels(endpoint=request.path, status=str(response.status_code)).inc()
         if hasattr(response, 'charset'):
             responses_by_charset.labels(str(response.charset)).inc()
         if hasattr(response, 'streaming') and response.streaming:
@@ -137,7 +137,7 @@ class PrometheusAfterMiddleware(MiddlewareMixin):
         if hasattr(response, 'content'):
             responses_body_bytes.observe(len(response.content))
         if hasattr(request, 'prometheus_after_middleware_event'):
-            requests_latency.observe(TimeSince(
+            requests_latency.labels(endpoint=request.path).observe(TimeSince(
                 request.prometheus_after_middleware_event))
         else:
             requests_unknown_latency.inc()
