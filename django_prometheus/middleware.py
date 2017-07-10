@@ -149,7 +149,7 @@ class PrometheusAfterMiddleware(MiddlewareMixin):
             name = request.resolver_match.view_name or '<unnamed view>'
             exceptions_by_view.labels(name).inc()
         if hasattr(request, 'prometheus_after_middleware_event'):
-            requests_latency.observe(TimeSince(
+            requests_latency.labels(endpoint=request.path).observe(TimeSince(
                 request.prometheus_after_middleware_event))
         else:
             requests_unknown_latency.inc()
