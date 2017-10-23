@@ -1,5 +1,7 @@
 from django.http import HttpResponse
 from django.conf import settings
+from prometheus_client import multiprocess
+
 try:
     # Python 2
     from BaseHTTPServer import HTTPServer
@@ -58,7 +60,7 @@ def SetupPrometheusEndpointOnPortRange(port_range, addr=''):
     This is useful when you're running Django as a WSGI application
     with multiple processes and you want Prometheus to discover all
     workers. Each worker will grab a port and you can use Prometheus
-    to aggregate accross workers.
+    to aggregate across workers.
 
     port_range may be any iterable object that contains a list of
     ports. Typically this would be an xrange of contiguous ports.
@@ -105,7 +107,10 @@ def ExportToDjangoView(request):
 
     You can use django_prometheus.urls to map /metrics to this view.
     """
-    metrics_page = prometheus_client.generate_latest()
+    registry = prometheus_client.CollectorRegistry()
+    if 'prometheus_multiproc_dir' in os.environ:
+        multiprocess.MultiProcessCollector(registry)
+    metrics_page = prometheus_client.generate_latest(registry)
     return HttpResponse(
         metrics_page,
         content_type=prometheus_client.CONTENT_TYPE_LATEST)

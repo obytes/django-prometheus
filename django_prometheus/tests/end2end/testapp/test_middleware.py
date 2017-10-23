@@ -1,5 +1,6 @@
 import django
 from django_prometheus.testutils import PrometheusTestCaseMixin
+from testapp.views import ObjectionException
 from django.test import SimpleTestCase
 import unittest
 
@@ -65,10 +66,9 @@ class TestMiddlewareMetrics(PrometheusTestCaseMixin, SimpleTestCase):
             r, 3, M('responses_body_total_bytes_bucket'), le='128.0')
         self.assertMetricDiff(
             r, 4, M('responses_body_total_bytes_bucket'), le='8192.0')
-        if django.VERSION >= (1, 8):
-            self.assertMetricDiff(
-                r, 4, M('responses_total_by_charset'), charset='utf-8')
-            self.assertMetricDiff(r, 0, M('responses_streaming_total'))
+        self.assertMetricDiff(
+            r, 4, M('responses_total_by_charset'), charset='utf-8')
+        self.assertMetricDiff(r, 0, M('responses_streaming_total'))
 
     def test_latency_histograms(self):
         # Caution: this test is timing-based. This is not ideal. It
@@ -82,16 +82,26 @@ class TestMiddlewareMetrics(PrometheusTestCaseMixin, SimpleTestCase):
         # buckets is fine.
         self.client.get('/slow')
         self.assertMetricDiff(
-            r, 0, M('requests_latency_seconds_bucket'), le='0.05')
+            r, 0,
+            M("requests_latency_seconds_by_view_method_bucket"),
+            le='0.05', view="slow", method="GET")
         self.assertMetricDiff(
-            r, 1, M('requests_latency_seconds_bucket'), le='5.0')
+            r, 1,
+            M("requests_latency_seconds_by_view_method_bucket"),
+            le='5.0', view="slow", method="GET")
 
-        self.client.get('/')
+    def test_exception_latency_histograms(self):
+        r = self.saveRegistry()
+
+        try:
+            self.client.get('/objection')
+        except ObjectionException:
+            pass
         self.assertMetricDiff(
-            r, 2, M('requests_latency_seconds_bucket'), le='+Inf')
+            r, 2,
+            M("requests_latency_seconds_by_view_method_bucket"),
+            le='0.05', view="testapp.views.objection", method="GET")
 
-    @unittest.skipIf(django.VERSION < (1, 8),
-                     'Streaming responses are not supported before Django 1.8')
     def test_streaming_responses(self):
         r = self.saveRegistry()
         self.client.get('/')
