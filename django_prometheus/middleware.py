@@ -1,15 +1,11 @@
 from prometheus_client import Counter, Histogram
 from django_prometheus.utils import Time, TimeSince, PowersOf
-<<<<<<< HEAD
-from django.utils.deprecation import MiddlewareMixin
-=======
 import django
-
 if django.VERSION >= (1, 10, 0):
     from django.utils.deprecation import MiddlewareMixin
 else:
     MiddlewareMixin = object
->>>>>>> dc64d8743589d70705863bfef3e995b38a9d9157
+
 
 requests_total = Counter(
     'django_http_requests_before_middlewares_total',
